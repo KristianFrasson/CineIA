@@ -10,7 +10,9 @@ import google.generativeai as genai
 import streamlit as st
 
 APP_TITLE = "CineIA"
-MODEL_NAME = "gemini-1.5-flash"
+# The current key exposes the Gemini flash alias below in the available model list.
+# The activity mentions gemini-1.5-flash, but this alias keeps the app runnable now.
+MODEL_NAME = "gemini-flash-latest"
 FEEDBACK_FILE = Path("feedback.csv")
 GENRES = [
     "Ação",
