@@ -5,8 +5,10 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import google.generativeai as genai
+import qrcode
 import streamlit as st
 
 APP_TITLE = "CineIA"
@@ -133,6 +135,40 @@ def append_feedback(mood: str, genres: list[str], max_minutes: int, feedback: st
         if file.tell() == 0:
             writer.writerow(["mood", "generos", "tempo_maximo", "feedback"])
         writer.writerow([mood_clean, genres_text, max_minutes, feedback])
+
+
+def resolve_app_url() -> str | None:
+    """Return the current public URL when Streamlit exposes it."""
+    try:
+        context_url = str(st.context.url).strip()
+    except Exception:
+        context_url = ""
+
+    if context_url:
+        parsed = urlsplit(context_url)
+        normalized_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+        if normalized_url:
+            return normalized_url
+
+    try:
+        general = st.secrets.get("general", {})
+    except Exception:
+        general = {}
+
+    secret_url = str(general.get("app_url", "")).strip()
+    return secret_url or None
+
+
+def build_qr_code(url: str):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    return qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
 
 if "recommendations" not in st.session_state:
@@ -262,7 +298,17 @@ st.markdown("### 📱 Acesse pelo celular")
 st.markdown(
     "Escaneie o QR Code abaixo para abrir o CineIA no seu dispositivo mobile."
 )
-# Placeholder local: substitua esta imagem pelo QR Code real gerado depois do deploy.
-# Quando o app estiver publicado no Streamlit Cloud, troque o arquivo por um QR Code
-# que aponte para a URL final da aplicação.
-st.image("qrcode.png", caption="Escaneie para abrir o CineIA", use_column_width=True)
+app_url = resolve_app_url()
+if app_url:
+    st.image(
+        build_qr_code(app_url),
+        caption="Escaneie para abrir o CineIA",
+        width=360,
+    )
+    st.caption(f"QR Code gerado para: {app_url}")
+else:
+    st.warning(
+        "Não foi possível identificar a URL pública do app. "
+        "Configure `general.app_url` em Settings -> Secrets para gerar o QR Code correto."
+    )
+    st.image("qrcode.png", caption="Escaneie para abrir o CineIA", width=360)
